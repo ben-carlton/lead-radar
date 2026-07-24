@@ -72,7 +72,19 @@ function scopeArgs(
     // Organization IS the tenant boundary: every op may only ever touch its
     // own row, addressed by id instead of an organizationId column.
     if (READ_OR_WHERE_OPS.has(operation)) {
-      scoped.where = { ...(scoped.where as QueryArgs), id: organizationId };
+      const where = (scoped.where ?? {}) as QueryArgs;
+      // A caller that doesn't specify where.id gets their own org (the
+      // common case: "look up my organization"). A caller that explicitly
+      // asks for a DIFFERENT org's id must get zero rows back, not their
+      // own org silently substituted — id is forced to a value that can
+      // never exist rather than just overwritten, so this fails closed the
+      // same way every other model's cross-org lookup does.
+      const requestedId = where.id;
+      const idFilter =
+        requestedId === undefined || requestedId === organizationId
+          ? organizationId
+          : "__unreachable_organization_id__";
+      scoped.where = { ...where, id: idFilter };
       return scoped;
     }
     throw new Error(
