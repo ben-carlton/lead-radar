@@ -57,6 +57,25 @@ Three independent layers, per `PROJECT_BRIEF.md.txt`:
 (creating the first Organization for a new user), and future admin/background
 job code.
 
+## Background jobs (Inngest)
+
+`src/inngest/functions.ts` has one deliberately trivial function
+(`hello-world`, triggered by `test/hello.world`) whose only purpose is to
+prove the Inngest ↔ Next.js wiring before real jobs (crawl, classify, ...)
+get built on it.
+
+- **Local dev**: run `npx inngest-cli@latest dev -u http://localhost:3000/api/inngest`
+  alongside `npm run dev`, with `INNGEST_DEV=1` set (already in `.env`).
+  Verified end-to-end: the Dev Server UI at localhost:8288 shows runs
+  completing when a `test/hello.world` event is sent.
+- **Production**: not deployed yet. Needs a Vercel project and an Inngest
+  Cloud account (app.inngest.com) connected to the deployed `/api/inngest`
+  URL, with `INNGEST_SIGNING_KEY` / `INNGEST_EVENT_KEY` set in Vercel and
+  `INNGEST_DEV` **unset**. `BUILD_ORDER.md.txt` step 5 calls for proving this
+  runs in production before building further background jobs on it —
+  deliberately deferred for now; do this before step 6 depends on it running
+  for real.
+
 ## Notes on this scaffold
 
 - `create-next-app@latest` installed **Next.js 16.2.11** (React 19.2.4), not
