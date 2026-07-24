@@ -1,0 +1,38 @@
+# Build order
+
+Do these in order. Finish and verify each before starting the next.
+
+1. Auth, Organization, User, tenant-scoped Prisma client, RLS policies.
+2. Isolation test suite. Before any feature work. Two orgs, assert 404 across
+   every endpoint.
+3. Profile CRUD, org scoped.
+4. Source management: add by URL, RSS auto-detect, selector preview.
+5. Inngest wired up with one trivial job. Deploy to Vercel and prove it runs in
+   production before going further.
+6. Fetch, dedupe, keyword filter. No LLM yet. Prove the plumbing.
+7. Classify, extract, score, enrich.
+8. Leads UI with filters.
+9. Exports to Vercel Blob.
+10. Vercel Cron and Resend email delivery.
+11. Budget enforcement and usage dashboard.
+12. Source suggestion feature.
+13. Plan gating and Stripe stub.
+
+Funnel counters go in at step 6 so drop-off is visible the whole way through.
+
+Stop and check in with me at the end of steps 2, 5, and 6.
+
+## Seed data for testing
+
+Profile:
+- Sells: rotary screw air compressors, VSD compressors, portable diesel
+  compressors
+- Industries: manufacturing, food processing, packaging, steel fabrication,
+  mining services, heavy industrial
+- Buyer roles: Maintenance Manager, Engineering Manager, Plant Manager,
+  Operations Manager
+- Regions: Brisbane Southside, Logan, Ipswich, Gold Coast, Northern NSW to
+  Grafton
+- Source: australianmanufacturing.com.au
+- Signal keywords: new facility, expansion, greenfield, commissioning, breaking
+  ground, doubling capacity, capex, relocating, new plant, production line

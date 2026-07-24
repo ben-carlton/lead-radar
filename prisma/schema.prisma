@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id                  String   @id @default(cuid())
+  name                String
+  slug                String   @unique
+  plan                String   @default("free")
+  tokenBudgetMonthly  Int      @default(200000)
+  tokensUsedThisMonth Int      @default(0)
+  budgetResetAt       DateTime @default(now())
+  stripeCustomerId    String?  @unique
+  createdAt           DateTime @default(now())
+
+  users       User[]
+  memberships Membership[]
+
+  @@map("organizations")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// Every user currently belongs to exactly one org via User.organizationId.
+// This table exists so multi-org membership is a data migration later, not a
+// schema migration. Not enforced anywhere yet.
+model Membership {
+  id             String         @id @default(cuid())
+  userId         String
+  organizationId String
+  role           MembershipRole @default(MEMBER)
+  createdAt      DateTime       @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js
+// ---------------------------------------------------------------------------
+
+model User {
+  id             String         @id @default(cuid())
+  name           String?
+  email          String         @unique
+  emailVerified  DateTime?
+  image          String?
+  organizationId String
+  role           MembershipRole @default(OWNER)
+  createdAt      DateTime       @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accounts     Account[]
+  sessions     Session[]
+  memberships  Membership[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}

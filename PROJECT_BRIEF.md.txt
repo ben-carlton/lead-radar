@@ -1,0 +1,177 @@
+# Lead Radar
+
+A web app that reads industry trade news and returns a list of sales leads.
+It is not a CRM. It produces lists you export and take elsewhere.
+
+## What it does
+
+1. User signs up and creates a profile: what they sell, what industries they
+   target, what job titles they sell to, what geographic area they cover.
+2. User adds news sources (URLs). The app also suggests sources and asks
+   whether to keep them.
+3. The app crawls those sources for buying signals: facility expansions,
+   greenfield sites, new plants, relocations, capacity increases, capex.
+4. It returns a scored lead list with company, suburb, state, why it's a lead,
+   and a contact name where one can be found.
+5. User downloads it as xlsx, csv, or pdf, or has it emailed on a schedule.
+
+## Two run modes
+
+- Backfill: pick a lookback window (7/30/90/180/365 days) and run once.
+- Scheduled: daily, weekly, or monthly, emailed automatically.
+
+## Stack
+
+- Next.js 15, App Router, TypeScript
+- Postgres on Neon, via Prisma with connection pooling
+- Auth.js v5, email magic link plus Google
+- Deployed on Vercel
+- Inngest for background jobs
+- Vercel Cron for scheduling
+- Vercel Blob for export files
+- Resend for email
+- Tailwind and shadcn/ui
+- Anthropic SDK, model calls only where specified below
+
+## Multi-tenant rules (non-negotiable)
+
+Every user belongs to an Organization. Signup creates one automatically.
+
+Every data table carries a non-nullable `organizationId` with an index.
+No exceptions.
+
+Three layers of isolation, all required:
+
+1. Postgres Row Level Security on every tenant table.
+2. A tenant-scoped Prisma client. Route handlers must never import the raw
+   client. They call `getTenantDb()`, which reads the session, and returns a
+   client with Prisma `$extends` middleware that injects `organizationId` into
+   every read and write.
+3. An isolation test suite: seed two orgs, assert every endpoint returns 404
+   (not 403) for the other org's records. Runs in CI.
+
+Article dedupe is unique on `[organizationId, urlHash]`, not urlHash alone.
+
+Every background job carries `organizationId` in its payload and sets tenant
+context as its first action.
+
+## Cost control (the main design constraint)
+
+LLM calls must be rare. The pipeline is a funnel:
+
+1. Fetch. RSS first, HTML scrape as fallback. No LLM.
+2. Dedupe by hash of normalised URL. No LLM.
+3. Keyword filter against a signal lexicon plus the profile's industry terms.
+   No LLM. This must remove 80 to 90 percent of articles.
+4. Classify survivors with Haiku. Send title plus first 1200 characters only.
+   Batch up to 10 articles per call. Returns JSON: is_lead, signal_type,
+   confidence.
+5. Extract confirmed leads only, with Sonnet.
+
+Never send full HTML to a model. Strip to text, truncate, then send.
+Log tokens per stage to a TokenUsage table. Show spend in the UI.
+Per-org monthly token ceiling, checked before each call, hard stop when hit.
+
+## Data model
+
+Organization: id, name, slug, plan, tokenBudgetMonthly, tokensUsedThisMonth,
+  budgetResetAt, stripeCustomerId, createdAt
+
+User: id, email, name, emailVerified, image, organizationId, role
+
+Profile: id, organizationId, name, productsSold, industriesTargeted[],
+  buyerRoles[], regions[], signalKeywords[], excludeKeywords[],
+  scoringWeights, isActive
+
+Source: id, organizationId, profileId, name, url, feedUrl, type (rss|html),
+  status (active|suggested|rejected), selectors, lastCrawledAt, lastSuccessAt,
+  errorCount, articlesFound, leadsFound, suggestedReason
+
+Article: id, organizationId, sourceId, url, urlHash, title, publishedAt,
+  bodyText, stage, keywordScore, rejectReason, processedAt
+
+Lead: id, organizationId, articleId, profileId, companyName, suburb, state,
+  siteAddress, signalType, whyItsALead, score, scoreBreakdown,
+  estimatedTimeframe, contactName, contactRole, contactSource,
+  contactConfidence, sourceUrl, publishedAt, status
+
+Run: id, organizationId, profileId, mode, startedAt, finishedAt,
+  articlesFetched, articlesFiltered, articlesClassified, leadsCreated,
+  tokensIn, tokensOut, estimatedCost, status, errors
+
+TokenUsage: id, organizationId, runId, stage, model, tokensIn, tokensOut, cost
+
+Schedule: id, organizationId, profileId, cadence, timeOfDay, dayOfWeek,
+  exportFormats[], emailTo[], isActive, lastRunAt
+
+## Scoring
+
+0 to 100, weighted, tunable per profile. Defaults:
+
+- Signal strength 30. Greenfield and new plant highest, vague growth lowest.
+- Geographic fit 25. Inside region full, adjacent partial, outside excluded.
+- Industry fit 20.
+- Recency 15, decaying over 90 days.
+- Contact availability 10. Named contact with role full, company only zero.
+
+Store the breakdown as JSON on every lead. Never show a bare score.
+
+## Contact enrichment
+
+Stops as soon as it succeeds:
+
+1. Named person in the article. Free.
+2. Web lookup, only if the lead scores above 60. One targeted search.
+3. Role inference. Returns a likely job title to ask for, clearly flagged as
+   inferred.
+
+Never invent a person's name. If nothing is found, contactName is null and
+contactSource is none. A blank field is correct. A guess is a bug.
+
+## Screens
+
+- Setup: first-run profile wizard, editable later.
+- Sources: table with health stats. Add by pasting a URL, app auto-detects RSS
+  or proposes CSS selectors with a 3-article preview before saving. Separate
+  on-demand button for suggested sources, user accepts or rejects, rejections
+  remembered.
+- Run: backfill with cost estimate before starting, or set a schedule. Live
+  funnel progress.
+- Leads: sortable filterable table, bulk dismiss, click through to detail.
+- Export: xlsx, csv, pdf of the current filtered view.
+- Usage: token spend by day, stage, and model.
+
+## Background jobs (Inngest)
+
+Vercel functions time out, so nothing runs inline.
+
+Cron fires, enqueues run.start per active schedule.
+run.start creates the Run, enqueues source.crawl per source.
+source.crawl fetches, dedupes, keyword filters, enqueues batch.classify per 10.
+batch.classify calls Haiku, enqueues lead.extract for confirmed leads.
+lead.extract calls Sonnet, writes the Lead, optionally enqueues contact.enrich.
+run.finalize aggregates counters, generates exports, sends email.
+
+Every step idempotent. Check for existing records before writing so retries
+never duplicate a lead.
+
+## Prompts
+
+Live in lib/prompts/. Templated from the Profile, never hardcoded to an
+industry. Strict JSON out, no prose. Validate with Zod. On parse failure retry
+once with a repair instruction, then mark the article failed and move on. A bad
+response must never crash a run. Keep prompts short, you pay for every word on
+every call.
+
+## Crawling etiquette
+
+Respect robots.txt. Real user agent with a contact email. One request per
+second per domain with jitter. Store links and short excerpts only, never
+republish full article text. Back off on 403 and 429, then flag the source.
+
+## SaaS hooks (build now, use later)
+
+- plan field on Organization, all limits in a single lib/plans.ts table
+- Stripe customer ID column and a webhook route stub
+- Membership table so teams are a small change later
+- Free tier: 1 profile, 5 sources, weekly only, small token ceiling

@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(winget --version)",
+      "PowerShell(winget install OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements)",
+      "PowerShell($env:Path = [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); node --version; npm --version)",
+      "PowerShell([System.Environment]::SetEnvironmentVariable\\('Path', $env:Path + ';C:\\\\Program Files\\\\nodejs', 'Process'\\); node --version; npm --version)",
+      "Bash(rm -rf lead-radar/.next)",
+      "Bash(mv lead-radar/.gitignore lead-radar/AGENTS.md lead-radar/CLAUDE.md lead-radar/README.md lead-radar/eslint.config.mjs lead-radar/next-env.d.ts lead-radar/next.config.ts lead-radar/node_modules lead-radar/package-lock.json lead-radar/package.json lead-radar/postcss.config.mjs lead-radar/public lead-radar/src lead-radar/tsconfig.json .)",
+      "Bash(rmdir lead-radar *)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm install prisma @prisma/client next-auth@beta @auth/prisma-adapter resend zod @t3-oss/env-nextjs 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm approve-builds 2>&1 | Select-Object -Last 20)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm approve-scripts --allow-scripts-pending 2>&1 | Select-Object -Last 30)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm approve-scripts \"@prisma/engines\" prisma sharp unrs-resolver 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx --yes shadcn@latest init -d -b neutral 2>&1 | Select-Object -Last 60)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx --yes shadcn@latest init --help 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx --yes shadcn@latest init -d 2>&1 | Select-Object -Last 60)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx --yes shadcn@latest add button input label card form dropdown-menu avatar 2>&1 | Select-Object -Last 60)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma init --datasource-provider postgresql 2>&1 | Select-Object -Last 60)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm install @prisma/adapter-neon @neondatabase/serverless ws; npm install -D @types/ws dotenv-cli 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma validate 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma generate 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script 2>&1 | Select-Object -Last 120)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script > init_migration.sql 2>diff_err.txt; echo \"EXIT:$LASTEXITCODE\"; Get-Content diff_err.txt; Get-Content init_migration.sql -TotalCount 80)",
+      "Bash(mkdir -p \"prisma/migrations/20260724120000_init\" \"prisma/migrations/20260724120100_rls_policies\")",
+      "Bash(rm -f init_migration.sql diff_err.txt)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script 2>$null | Out-File -FilePath \"prisma\\\\migrations\\\\20260724120000_init\\\\migration.sql\" -Encoding utf8)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/next-auth/package.json'\\).version\\)\")",
+      "Bash(mkdir -p \"/c/Users/benca/OneDrive/Documents/Claude Code/Lead Finder/src/app/api/auth/[...nextauth]\")",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx tsc --noEmit 2>&1 | Select-Object -Last 100)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx auth secret 2>&1 | Select-Object -Last 30)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('base64'\\)\\)\")",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx eslint . 2>&1 | Select-Object -Last 80)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm run build 2>&1 | Select-Object -Last 150)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx tsc --noEmit 2>&1 | Select-Object -Last 40; npx eslint . 2>&1 | Select-Object -Last 40)"
+    ]
+  }
+}
