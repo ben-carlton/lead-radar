@@ -88,9 +88,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
     authorized({ auth, request }) {
+      const { pathname } = request.nextUrl;
       const isPublic =
-        request.nextUrl.pathname.startsWith("/sign-in") ||
-        request.nextUrl.pathname.startsWith("/api/auth");
+        pathname.startsWith("/sign-in") ||
+        pathname.startsWith("/api/auth") ||
+        // Exact match only — Inngest's servers call this path directly and
+        // verify requests themselves via INNGEST_SIGNING_KEY, not our
+        // session cookie. Sibling routes like /api/inngest/trigger are NOT
+        // covered by this and still require a session.
+        pathname === "/api/inngest";
       return isPublic || Boolean(auth?.user);
     },
   },
