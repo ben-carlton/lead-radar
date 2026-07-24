@@ -1,4 +1,4 @@
-﻿-- CreateEnum
+-- CreateEnum
 CREATE TYPE "SourceType" AS ENUM ('RSS', 'HTML');
 
 -- CreateEnum

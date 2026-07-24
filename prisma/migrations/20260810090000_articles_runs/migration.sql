@@ -1,4 +1,4 @@
-﻿-- CreateEnum
+-- CreateEnum
 CREATE TYPE "ArticleStage" AS ENUM ('FETCHED', 'KEYWORD_REJECTED', 'KEYWORD_PASSED', 'CLASSIFIED', 'LEAD_EXTRACTED');
 
 -- CreateEnum
