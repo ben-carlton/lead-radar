@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { rawDb } from "@/lib/db";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 export default async function Home() {
   const session = await auth();
@@ -16,6 +17,9 @@ export default async function Home() {
           Signed in as {session?.user.email} &middot; {organization?.name}
         </p>
       </div>
+      <Link href="/profiles" className={buttonVariants()}>
+        Profiles
+      </Link>
       <form
         action={async () => {
           "use server";

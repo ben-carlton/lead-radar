@@ -44,7 +44,14 @@
       "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm install -D vitest 2>&1 | Select-Object -Last 30)",
       "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm approve-scripts --allow-scripts-pending 2>&1 | Select-Object -Last 20)",
       "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx eslint . 2>&1 | Select-Object -Last 100)",
-      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm test 2>&1 | Select-Object -Last 150)"
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm test 2>&1 | Select-Object -Last 150)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma validate 2>&1 | Select-Object -Last 40; npx prisma generate 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script 2>$null | Out-File -FilePath \"prisma\\\\migrations\\\\20260728090000_profiles\\\\migration.sql\" -Encoding utf8)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script 2>&1 | Select-Object -Last 60)",
+      "Bash(cat /tmp/schema_old.prisma 2>/dev/null | head -5; echo \"---\"; ls -la /tmp/schema_old.prisma 2>/dev/null)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-schema /tmp/schema_old.prisma --to-schema prisma/schema.prisma --script 2>&1 | Select-Object -Last 100 | Out-File -FilePath \"prisma\\\\migrations\\\\20260728090000_profiles\\\\migration.sql\" -Encoding utf8)",
+      "Bash(mkdir -p \"/c/Users/benca/OneDrive/Documents/Claude Code/Lead Finder/src/app/api/profiles/[id]\")",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx tsc --noEmit 2>&1 | Select-Object -Last 150)"
     ]
   }
 }

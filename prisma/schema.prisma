@@ -29,6 +29,7 @@ model Organization {
 
   users       User[]
   memberships Membership[]
+  profiles    Profile[]
 
   @@map("organizations")
 }
@@ -118,4 +119,40 @@ model VerificationToken {
 
   @@id([identifier, token])
   @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Application data
+// ---------------------------------------------------------------------------
+
+// What to look for and who to hand it to. A run's keyword filter, scoring,
+// and contact-role matching all read from one of these.
+model Profile {
+  id             String @id @default(cuid())
+  organizationId String
+
+  name         String
+  productsSold String
+
+  industriesTargeted String[]
+  buyerRoles         String[]
+  regions            String[]
+  signalKeywords     String[]
+  excludeKeywords    String[]
+
+  // Defaults mirror PROJECT_BRIEF.md.txt's scoring weights (out of 100):
+  // signal strength 30, geographic fit 25, industry fit 20, recency 15,
+  // contact availability 10. Tunable per profile; stored as JSON since the
+  // component list may grow without a schema migration.
+  scoringWeights Json @default("{\"signalStrength\":30,\"geographicFit\":25,\"industryFit\":20,\"recency\":15,\"contactAvailability\":10}")
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("profiles")
 }

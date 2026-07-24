@@ -113,4 +113,44 @@ describe("tenant-scoped client: isolation", () => {
     // Account/Session/VerificationToken must only ever go through rawDb.
     await expect(db.account.findMany()).rejects.toThrow(/organizationId/);
   });
+
+  test("Profile rows are isolated the same way", async () => {
+    const [profileA, profileB] = await Promise.all([
+      rawDb.profile.create({
+        data: {
+          organizationId: orgA.organizationId,
+          name: "Org A profile",
+          productsSold: "Air compressors",
+        },
+      }),
+      rawDb.profile.create({
+        data: {
+          organizationId: orgB.organizationId,
+          name: "Org B profile",
+          productsSold: "Forklifts",
+        },
+      }),
+    ]);
+
+    const db = forOrganization(orgA.organizationId);
+
+    const profiles = await db.profile.findMany();
+    expect(profiles.some((p) => p.id === profileA.id)).toBe(true);
+    expect(profiles.some((p) => p.id === profileB.id)).toBe(false);
+
+    expect(await db.profile.findUnique({ where: { id: profileB.id } })).toBeNull();
+
+    await expect(
+      db.profile.update({ where: { id: profileB.id }, data: { name: "pwned" } }),
+    ).rejects.toThrow();
+
+    const created = await db.profile.create({
+      data: {
+        organizationId: orgB.organizationId, // must be overridden, not honored
+        name: "Spoofed profile",
+        productsSold: "n/a",
+      },
+    });
+    expect(created.organizationId).toBe(orgA.organizationId);
+  });
 });
