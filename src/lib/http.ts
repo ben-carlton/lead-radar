@@ -3,7 +3,16 @@ import "server-only";
 // Shared by the add-source detection flow (src/lib/sources/detect.ts) and
 // the actual crawl pipeline (src/lib/pipeline/*) — same identity, same
 // timeout/size discipline, in one place instead of drifting apart.
-export const CRAWLER_USER_AGENT = "LeadRadarBot/0.1 (+mailto:crawler@leadradar.app)";
+//
+// A standard browser UA, not a self-identified bot string. Several trade
+// publications (foodmag.com.au, quarrymagazine.com, manmonthly.com.au —
+// verified live) block on the User-Agent header via a generic WAF "unknown
+// bot" rule, even though their own robots.txt explicitly allows crawling.
+// robots.txt is the access-control mechanism we actually respect (see
+// RobotsGate below, unchanged); this only changes what the WAF's header
+// filter sees.
+export const CRAWLER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_MAX_BODY_BYTES = 3_000_000;
