@@ -47,7 +47,11 @@ Three independent layers, per `PROJECT_BRIEF.md.txt`:
    handlers call `getTenantDb()`, never `rawDb` directly. It rewrites every
    query's `where`/`data` to the caller's `organizationId` and runs it as
    `app_user` inside a transaction, so RLS applies.
-3. **Isolation test suite** — not yet built (build order step 2).
+3. **Isolation test suite** — [tests/isolation](tests/isolation), run with
+   `npm test`. Needs `DATABASE_URL` pointed at a real (dev/test, never
+   production) Postgres — it creates and deletes real orgs/users. CI
+   (`.github/workflows/isolation-tests.yml`) runs it against a throwaway Neon
+   branch per run; needs `NEON_API_KEY` / `NEON_PROJECT_ID` repo secrets.
 
 `rawDb` (the unscoped client) is reserved for the Auth.js adapter, signup
 (creating the first Organization for a new user), and future admin/background

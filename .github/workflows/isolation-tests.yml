@@ -1,0 +1,57 @@
+name: Isolation tests
+
+# Requires two repo secrets (Neon console -> your project -> Settings ->
+# API keys, and the project's ID from the URL/console):
+#   NEON_API_KEY
+#   NEON_PROJECT_ID
+#
+# The app connects via the Neon serverless driver (@neondatabase/serverless
+# over WebSocket), which needs an actual Neon endpoint — a plain
+# `postgres:16` service container doesn't speak that protocol. So instead of
+# a service container, each run creates a throwaway Neon branch (a full,
+# isolated copy-on-write copy of the schema), runs migrations and the
+# isolation suite against it, then deletes it — win or fail.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Create ephemeral Neon branch
+        id: neon-branch
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          branch_name: ci-isolation-${{ github.run_id }}
+
+      - name: Apply migrations (tables + RLS policies)
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url_pooled }}
+
+      - name: Run isolation suite
+        run: npm test
+        env:
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url_pooled }}
+
+      - name: Delete ephemeral Neon branch
+        if: always()
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_id: ${{ steps.neon-branch.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
