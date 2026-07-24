@@ -34,6 +34,8 @@ const MODELS_SCOPED_BY_ORG_ID = new Set([
   "Source",
   "Article",
   "Run",
+  "TokenUsage",
+  "Lead",
 ]);
 
 const READ_OR_WHERE_OPS = new Set([

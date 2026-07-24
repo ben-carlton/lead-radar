@@ -33,6 +33,8 @@ model Organization {
   sources     Source[]
   articles    Article[]
   runs        Run[]
+  leads       Lead[]
+  tokenUsages TokenUsage[]
 
   @@map("organizations")
 }
@@ -157,6 +159,7 @@ model Profile {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sources      Source[]
   runs         Run[]
+  leads        Lead[]
 
   @@index([organizationId])
   @@map("profiles")
@@ -225,8 +228,7 @@ enum ArticleStage {
 // One crawled article. Dedupe key is [organizationId, urlHash] (a hash of
 // the *normalized* URL — see src/lib/pipeline/fetch.ts), not urlHash alone,
 // per the multi-tenant rule: two orgs crawling the same public article must
-// not collide. CLASSIFIED/LEAD_EXTRACTED stages are unused until step 7;
-// step 6 only ever produces FETCHED -> KEYWORD_REJECTED|KEYWORD_PASSED.
+// not collide.
 model Article {
   id             String @id @default(cuid())
   organizationId String
@@ -239,15 +241,22 @@ model Article {
   publishedAt DateTime?
   bodyText    String?
 
-  stage         ArticleStage @default(FETCHED)
-  keywordScore  Int          @default(0)
-  rejectReason  String?
+  stage        ArticleStage @default(FETCHED)
+  keywordScore Int          @default(0)
+  rejectReason String?
+
+  // Set when stage becomes CLASSIFIED (src/lib/pipeline/classify.ts) — kept
+  // here, not just passed through to extraction, so a retried batch/classify
+  // job doesn't re-spend tokens re-classifying an already-classified article.
+  signalType           String?
+  classifierConfidence Float?
 
   processedAt DateTime?
   createdAt   DateTime  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   source       Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  lead         Lead?
 
   @@unique([organizationId, urlHash])
   @@index([organizationId])
@@ -268,9 +277,8 @@ enum RunStatus {
 
 // One pipeline invocation. Funnel counters (articlesFetched -> ...Filtered
 // -> ...Classified -> leadsCreated) make drop-off visible at every stage,
-// per BUILD_ORDER.md.txt step 6. tokensIn/tokensOut/estimatedCost stay 0
-// until step 7 adds LLM calls — present now so the schema doesn't need to
-// change under a running feature.
+// per BUILD_ORDER.md.txt step 6. tokensIn/tokensOut/estimatedCost aggregate
+// this run's TokenUsage rows.
 model Run {
   id             String @id @default(cuid())
   organizationId String
@@ -286,9 +294,9 @@ model Run {
   articlesClassified Int @default(0)
   leadsCreated       Int @default(0)
 
-  tokensIn       Int @default(0)
-  tokensOut      Int @default(0)
-  estimatedCost  Float @default(0)
+  tokensIn      Int   @default(0)
+  tokensOut     Int   @default(0)
+  estimatedCost Float @default(0)
 
   errors Json?
 
@@ -297,8 +305,97 @@ model Run {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  tokenUsages  TokenUsage[]
 
   @@index([organizationId])
   @@index([profileId])
   @@map("runs")
+}
+
+enum AiStage {
+  CLASSIFY
+  EXTRACT
+  ENRICH
+}
+
+// One row per LLM call. PROJECT_BRIEF.md.txt: "Log tokens per stage to a
+// TokenUsage table. Show spend in the UI." estimatedCost is computed at
+// write time from the rates in src/lib/ai/budget.ts, not recomputed later —
+// so historical spend stays accurate even if pricing changes going forward.
+model TokenUsage {
+  id             String @id @default(cuid())
+  organizationId String
+  runId          String
+
+  stage     AiStage
+  model     String
+  tokensIn  Int
+  tokensOut Int
+  cost      Float
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  run          Run          @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([runId])
+  @@map("token_usages")
+}
+
+enum ContactSource {
+  ARTICLE
+  WEB_SEARCH
+  INFERRED_ROLE
+  NONE
+}
+
+enum LeadStatus {
+  NEW
+  DISMISSED
+}
+
+// A confirmed buying signal, extracted from one Article. articleId is
+// unique — extraction is idempotent, a retried lead/extract job finds the
+// existing Lead instead of creating a duplicate. contactSource NONE +
+// contactName null is a correct, expected outcome, not a failure — see
+// PROJECT_BRIEF.md.txt's contact-enrichment section: "A blank field is
+// correct. A guess is a bug."
+model Lead {
+  id             String @id @default(cuid())
+  organizationId String
+  articleId      String @unique
+  profileId      String
+
+  companyName String
+  suburb      String?
+  state       String?
+  siteAddress String?
+
+  signalType         String
+  whyItsALead        String
+  estimatedTimeframe String?
+
+  score          Int
+  scoreBreakdown Json
+
+  contactName       String?
+  contactRole       String?
+  contactSource     ContactSource @default(NONE)
+  contactConfidence Float?
+
+  sourceUrl   String
+  publishedAt DateTime?
+  status      LeadStatus @default(NEW)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  article      Article      @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([profileId])
+  @@map("leads")
 }

@@ -314,4 +314,152 @@ describe("tenant-scoped client: isolation", () => {
       db.run.update({ where: { id: runB.id }, data: { status: "FAILED" } }),
     ).rejects.toThrow();
   });
+
+  test("TokenUsage rows are isolated the same way", async () => {
+    const [profileA, profileB] = await Promise.all([
+      rawDb.profile.create({
+        data: { organizationId: orgA.organizationId, name: "A", productsSold: "x" },
+      }),
+      rawDb.profile.create({
+        data: { organizationId: orgB.organizationId, name: "B", productsSold: "y" },
+      }),
+    ]);
+    const [runA, runB] = await Promise.all([
+      rawDb.run.create({
+        data: { organizationId: orgA.organizationId, profileId: profileA.id, mode: "BACKFILL" },
+      }),
+      rawDb.run.create({
+        data: { organizationId: orgB.organizationId, profileId: profileB.id, mode: "BACKFILL" },
+      }),
+    ]);
+    const [usageA, usageB] = await Promise.all([
+      rawDb.tokenUsage.create({
+        data: {
+          organizationId: orgA.organizationId,
+          runId: runA.id,
+          stage: "CLASSIFY",
+          model: "claude-haiku-4-5",
+          tokensIn: 100,
+          tokensOut: 20,
+          cost: 0.001,
+        },
+      }),
+      rawDb.tokenUsage.create({
+        data: {
+          organizationId: orgB.organizationId,
+          runId: runB.id,
+          stage: "CLASSIFY",
+          model: "claude-haiku-4-5",
+          tokensIn: 100,
+          tokensOut: 20,
+          cost: 0.001,
+        },
+      }),
+    ]);
+
+    const db = forOrganization(orgA.organizationId);
+
+    const usages = await db.tokenUsage.findMany();
+    expect(usages.some((u) => u.id === usageA.id)).toBe(true);
+    expect(usages.some((u) => u.id === usageB.id)).toBe(false);
+
+    expect(await db.tokenUsage.findUnique({ where: { id: usageB.id } })).toBeNull();
+
+    await expect(
+      db.tokenUsage.update({ where: { id: usageB.id }, data: { cost: 999 } }),
+    ).rejects.toThrow();
+  });
+
+  test("Lead rows are isolated the same way", async () => {
+    const [profileA, profileB] = await Promise.all([
+      rawDb.profile.create({
+        data: { organizationId: orgA.organizationId, name: "A", productsSold: "x" },
+      }),
+      rawDb.profile.create({
+        data: { organizationId: orgB.organizationId, name: "B", productsSold: "y" },
+      }),
+    ]);
+    const [sourceA, sourceB] = await Promise.all([
+      rawDb.source.create({
+        data: {
+          organizationId: orgA.organizationId,
+          profileId: profileA.id,
+          name: "A",
+          url: `https://a-${crypto.randomUUID().slice(0, 8)}.example.test`,
+          type: "RSS",
+          feedUrl: "https://a.example.test/feed",
+        },
+      }),
+      rawDb.source.create({
+        data: {
+          organizationId: orgB.organizationId,
+          profileId: profileB.id,
+          name: "B",
+          url: `https://b-${crypto.randomUUID().slice(0, 8)}.example.test`,
+          type: "RSS",
+          feedUrl: "https://b.example.test/feed",
+        },
+      }),
+    ]);
+    const [articleA, articleB] = await Promise.all([
+      rawDb.article.create({
+        data: {
+          organizationId: orgA.organizationId,
+          sourceId: sourceA.id,
+          url: "https://a.example.test/article-1",
+          urlHash: `hash-a-${crypto.randomUUID().slice(0, 8)}`,
+          title: "Org A article",
+        },
+      }),
+      rawDb.article.create({
+        data: {
+          organizationId: orgB.organizationId,
+          sourceId: sourceB.id,
+          url: "https://b.example.test/article-1",
+          urlHash: `hash-b-${crypto.randomUUID().slice(0, 8)}`,
+          title: "Org B article",
+        },
+      }),
+    ]);
+    const [leadA, leadB] = await Promise.all([
+      rawDb.lead.create({
+        data: {
+          organizationId: orgA.organizationId,
+          articleId: articleA.id,
+          profileId: profileA.id,
+          companyName: "Acme A",
+          signalType: "greenfield",
+          whyItsALead: "test",
+          score: 80,
+          scoreBreakdown: {},
+          sourceUrl: articleA.url,
+        },
+      }),
+      rawDb.lead.create({
+        data: {
+          organizationId: orgB.organizationId,
+          articleId: articleB.id,
+          profileId: profileB.id,
+          companyName: "Acme B",
+          signalType: "greenfield",
+          whyItsALead: "test",
+          score: 80,
+          scoreBreakdown: {},
+          sourceUrl: articleB.url,
+        },
+      }),
+    ]);
+
+    const db = forOrganization(orgA.organizationId);
+
+    const leads = await db.lead.findMany();
+    expect(leads.some((l) => l.id === leadA.id)).toBe(true);
+    expect(leads.some((l) => l.id === leadB.id)).toBe(false);
+
+    expect(await db.lead.findUnique({ where: { id: leadB.id } })).toBeNull();
+
+    await expect(
+      db.lead.update({ where: { id: leadB.id }, data: { companyName: "pwned" } }),
+    ).rejects.toThrow();
+  });
 });

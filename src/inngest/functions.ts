@@ -2,6 +2,8 @@ import { inngest } from "./client";
 import { forOrganization } from "@/lib/db";
 import { crawlSource } from "@/lib/pipeline/crawl";
 import { RobotsGate } from "@/lib/pipeline/fetch";
+import { classifyBatch, CLASSIFY_BATCH_SIZE } from "@/lib/pipeline/classify";
+import { extractAndScoreLead, enrichAndRescoreLead } from "@/lib/pipeline/lead";
 
 // Deliberately trivial — this exists to prove the Inngest <-> Next.js <->
 // Vercel wiring works end to end in production (BUILD_ORDER.md.txt step 5)
@@ -56,9 +58,10 @@ export const runStart = inngest.createFunction(
       });
 
       const robots = new RobotsGate();
+      const passedArticleIds: string[] = [];
 
       for (const source of sources) {
-        await step.run(`crawl-source-${source.id}`, () =>
+        const crawled = await step.run(`crawl-source-${source.id}`, () =>
           crawlSource({
             organizationId,
             sourceId: source.id,
@@ -67,6 +70,54 @@ export const runStart = inngest.createFunction(
             robots,
           }),
         );
+        passedArticleIds.push(...crawled.passedArticleIds);
+      }
+
+      // Classify -> extract -> score -> enrich the keyword-filter survivors
+      // (BUILD_ORDER.md.txt step 7). Kept as step.run calls inside this same
+      // function, same simplification as the per-source crawl loop above,
+      // rather than a full event-fan-out per stage — Inngest checkpoints
+      // each step.run independently, so this is still durable and
+      // idempotent across retries without the added complexity of
+      // event-based coordination.
+      if (passedArticleIds.length > 0) {
+        const profile = await step.run("load-profile", async () => {
+          const db = forOrganization(organizationId);
+          return db.profile.findUniqueOrThrow({ where: { id: profileId } });
+        });
+
+        for (let i = 0; i < passedArticleIds.length; i += CLASSIFY_BATCH_SIZE) {
+          const chunk = passedArticleIds.slice(i, i + CLASSIFY_BATCH_SIZE);
+
+          const classified = await step.run(`classify-batch-${i}`, async () => {
+            const db = forOrganization(organizationId);
+            const articles = await db.article.findMany({
+              where: { id: { in: chunk } },
+              select: { id: true, title: true, bodyText: true },
+            });
+            return classifyBatch(db, { organizationId, runId, profile, articles });
+          });
+
+          for (const articleId of classified.leadArticleIds) {
+            const extracted = await step.run(`extract-lead-${articleId}`, async () => {
+              const db = forOrganization(organizationId);
+              const article = await db.article.findUniqueOrThrow({ where: { id: articleId } });
+              return extractAndScoreLead(db, { organizationId, runId, profile, article });
+            });
+
+            if (extracted.status === "created" && extracted.needsEnrichment) {
+              await step.run(`enrich-lead-${extracted.leadId}`, () => {
+                const db = forOrganization(organizationId);
+                return enrichAndRescoreLead(db, {
+                  organizationId,
+                  runId,
+                  leadId: extracted.leadId,
+                  profile,
+                });
+              });
+            }
+          }
+        }
       }
 
       await step.run("finalize-run", async () => {

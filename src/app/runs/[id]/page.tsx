@@ -38,6 +38,17 @@ function FunnelStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function formatContact(lead: {
+  contactName: string | null;
+  contactRole: string | null;
+  contactSource: "ARTICLE" | "WEB_SEARCH" | "INFERRED_ROLE" | "NONE";
+}): string {
+  if (lead.contactSource === "NONE") return "—";
+  if (lead.contactName) return lead.contactRole ? `${lead.contactName} (${lead.contactRole})` : lead.contactName;
+  // INFERRED_ROLE: a likely title to ask for, no name — never invent one.
+  return `${lead.contactRole} (inferred)`;
+}
+
 export default async function RunDetailPage({ params }: Props) {
   const { id } = await params;
   const db = await getTenantDb();
@@ -54,6 +65,16 @@ export default async function RunDetailPage({ params }: Props) {
     where: { source: { profileId: run.profileId }, processedAt: { gte: run.startedAt } },
     orderBy: { createdAt: "desc" },
     include: { source: true },
+    take: 200,
+  });
+
+  // Lead has no runId either, for the same reason as Article — approximate
+  // "created during this run" the same way. Full sort/filter/export is the
+  // step-8 Leads screen (PROJECT_BRIEF.md.txt); this is just enough to see
+  // what a run produced without leaving the page.
+  const leads = await db.lead.findMany({
+    where: { profileId: run.profileId, createdAt: { gte: run.startedAt } },
+    orderBy: { score: "desc" },
     take: 200,
   });
 
@@ -90,6 +111,55 @@ export default async function RunDetailPage({ params }: Props) {
         <FunnelStat label="Passed filter" value={run.articlesFiltered} />
         <FunnelStat label="Classified" value={run.articlesClassified} />
         <FunnelStat label="Leads" value={run.leadsCreated} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Leads</h2>
+        {leads.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            {run.status === "RUNNING" ? "Still processing — refresh in a moment." : "No leads found."}
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Signal</TableHead>
+                  <TableHead className="text-right">Score</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Why it&apos;s a lead</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads.map((lead) => (
+                  <TableRow key={lead.id}>
+                    <TableCell className="font-medium">
+                      <a
+                        href={lead.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        {lead.companyName}
+                      </a>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {[lead.suburb, lead.state].filter(Boolean).join(", ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{lead.signalType}</TableCell>
+                    <TableCell className="text-right tabular-nums">{lead.score}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatContact(lead)}</TableCell>
+                    <TableCell className="text-muted-foreground max-w-sm truncate text-sm">
+                      {lead.whyItsALead}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">

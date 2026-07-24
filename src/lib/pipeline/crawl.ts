@@ -13,6 +13,11 @@ export type CrawlSourceResult = {
   rejected: number;
   duplicates: number;
   error: string | null;
+  // IDs of articles newly created as KEYWORD_PASSED this crawl — the
+  // classify stage (step 7) batches these directly rather than querying by
+  // stage, since a global stage query would also pick up leftovers from an
+  // unrelated run.
+  passedArticleIds: string[];
 };
 
 /**
@@ -43,6 +48,7 @@ export async function crawlSource(params: {
     rejected: 0,
     duplicates: 0,
     error: null,
+    passedArticleIds: [],
   };
 
   const source = await db.source.findUnique({ where: { id: sourceId }, include: { profile: true } });
@@ -96,7 +102,7 @@ export async function crawlSource(params: {
     const filter = filterArticle({ title: candidate.title, bodyText }, source.profile);
 
     try {
-      await db.article.create({
+      const created = await db.article.create({
         data: {
           sourceId: source.id,
           url: candidate.link,
@@ -113,6 +119,7 @@ export async function crawlSource(params: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       });
+      if (filter.passed) result.passedArticleIds.push(created.id);
     } catch (err) {
       // A concurrent retry inserted the same urlHash between our findFirst
       // check and this create — that's a duplicate, not a real error.
