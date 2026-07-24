@@ -218,4 +218,100 @@ describe("tenant-scoped client: isolation", () => {
     expect(crossOrgProfile.organizationId).toBe(orgA.organizationId);
     expect(crossOrgProfile.profileId).toBe(profileB.id);
   });
+
+  test("Article rows are isolated the same way", async () => {
+    const [profileA, profileB] = await Promise.all([
+      rawDb.profile.create({
+        data: { organizationId: orgA.organizationId, name: "A", productsSold: "x" },
+      }),
+      rawDb.profile.create({
+        data: { organizationId: orgB.organizationId, name: "B", productsSold: "y" },
+      }),
+    ]);
+    const [sourceA, sourceB] = await Promise.all([
+      rawDb.source.create({
+        data: {
+          organizationId: orgA.organizationId,
+          profileId: profileA.id,
+          name: "A",
+          url: `https://a-${crypto.randomUUID().slice(0, 8)}.example.test`,
+          type: "RSS",
+          feedUrl: "https://a.example.test/feed",
+        },
+      }),
+      rawDb.source.create({
+        data: {
+          organizationId: orgB.organizationId,
+          profileId: profileB.id,
+          name: "B",
+          url: `https://b-${crypto.randomUUID().slice(0, 8)}.example.test`,
+          type: "RSS",
+          feedUrl: "https://b.example.test/feed",
+        },
+      }),
+    ]);
+    const [articleA, articleB] = await Promise.all([
+      rawDb.article.create({
+        data: {
+          organizationId: orgA.organizationId,
+          sourceId: sourceA.id,
+          url: "https://a.example.test/article-1",
+          urlHash: `hash-a-${crypto.randomUUID().slice(0, 8)}`,
+          title: "Org A article",
+        },
+      }),
+      rawDb.article.create({
+        data: {
+          organizationId: orgB.organizationId,
+          sourceId: sourceB.id,
+          url: "https://b.example.test/article-1",
+          urlHash: `hash-b-${crypto.randomUUID().slice(0, 8)}`,
+          title: "Org B article",
+        },
+      }),
+    ]);
+
+    const db = forOrganization(orgA.organizationId);
+
+    const articles = await db.article.findMany();
+    expect(articles.some((a) => a.id === articleA.id)).toBe(true);
+    expect(articles.some((a) => a.id === articleB.id)).toBe(false);
+
+    expect(await db.article.findUnique({ where: { id: articleB.id } })).toBeNull();
+
+    await expect(
+      db.article.update({ where: { id: articleB.id }, data: { title: "pwned" } }),
+    ).rejects.toThrow();
+  });
+
+  test("Run rows are isolated the same way", async () => {
+    const [profileA, profileB] = await Promise.all([
+      rawDb.profile.create({
+        data: { organizationId: orgA.organizationId, name: "A", productsSold: "x" },
+      }),
+      rawDb.profile.create({
+        data: { organizationId: orgB.organizationId, name: "B", productsSold: "y" },
+      }),
+    ]);
+    const [runA, runB] = await Promise.all([
+      rawDb.run.create({
+        data: { organizationId: orgA.organizationId, profileId: profileA.id, mode: "BACKFILL" },
+      }),
+      rawDb.run.create({
+        data: { organizationId: orgB.organizationId, profileId: profileB.id, mode: "BACKFILL" },
+      }),
+    ]);
+
+    const db = forOrganization(orgA.organizationId);
+
+    const runs = await db.run.findMany();
+    expect(runs.some((r) => r.id === runA.id)).toBe(true);
+    expect(runs.some((r) => r.id === runB.id)).toBe(false);
+
+    expect(await db.run.findUnique({ where: { id: runB.id } })).toBeNull();
+
+    await expect(
+      db.run.update({ where: { id: runB.id }, data: { status: "FAILED" } }),
+    ).rejects.toThrow();
+  });
 });

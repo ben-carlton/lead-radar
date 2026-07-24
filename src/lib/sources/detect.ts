@@ -2,14 +2,7 @@ import "server-only";
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import { XMLParser } from "fast-xml-parser";
-
-// A single, user-initiated fetch when someone adds a source — not the
-// recurring crawl pipeline (BUILD_ORDER.md.txt step 6), which is where
-// robots.txt / rate-limit etiquette from PROJECT_BRIEF.md.txt applies. This
-// still identifies itself honestly, same principle.
-const USER_AGENT = "LeadRadarBot/0.1 (+mailto:crawler@leadradar.app)";
-const FETCH_TIMEOUT_MS = 8000;
-const MAX_BODY_BYTES = 3_000_000;
+import { fetchWithTimeout, readCappedText } from "@/lib/http";
 
 export type Selectors = {
   articleSelector: string;
@@ -17,7 +10,10 @@ export type Selectors = {
   linkSelector: string;
 };
 
-export type PreviewArticle = { title: string; link: string };
+export type ArticleCandidate = { title: string; link: string; publishedAt: string | null };
+// Kept as a name for the add-source preview UI, which never looks at
+// publishedAt — same shape as ArticleCandidate either way.
+export type PreviewArticle = ArticleCandidate;
 
 export type DetectionResult =
   | { type: "rss"; feedUrl: string; suggestedName: string | null; preview: PreviewArticle[] }
@@ -27,29 +23,6 @@ export type DetectionResult =
       suggestedName: string | null;
       preview: PreviewArticle[];
     };
-
-async function fetchWithTimeout(url: string): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function readCappedText(res: Response): Promise<string> {
-  const buf = await res.arrayBuffer();
-  const bytes = buf.byteLength > MAX_BODY_BYTES ? buf.slice(0, MAX_BODY_BYTES) : buf;
-  return new TextDecoder("utf-8").decode(bytes);
-}
 
 export function normalizeUrl(input: string): string {
   const trimmed = input.trim();
@@ -63,9 +36,9 @@ function looksLikeFeed(contentType: string | null, text: string): boolean {
   return /<rss[\s>]/i.test(head) || /<feed[\s>]/i.test(head) || /<rdf:rdf/i.test(head);
 }
 
-// Minimal, deliberately loose: good enough to extract title+link for a
-// 3-article preview, not a general-purpose feed reader.
-function parseFeedPreview(xml: string): PreviewArticle[] {
+// Minimal, deliberately loose: good enough to extract title/link/date, not
+// a general-purpose feed reader.
+export function parseFeedItems(xml: string, limit = Infinity): ArticleCandidate[] {
   let doc: Record<string, unknown>;
   try {
     doc = new XMLParser({
@@ -86,7 +59,7 @@ function parseFeedPreview(xml: string): PreviewArticle[] {
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
   return items
-    .slice(0, 3)
+    .slice(0, limit)
     .map((item: Record<string, unknown>) => {
       const rawTitle = item.title;
       const title =
@@ -104,7 +77,11 @@ function parseFeedPreview(xml: string): PreviewArticle[] {
         link = ((rawLink as Record<string, unknown>)["@_href"] as string) ?? "";
       }
 
-      return { title: String(title ?? "").trim(), link: link.trim() };
+      const rawDate = (item.pubDate ?? item.published ?? item.updated) as string | undefined;
+      const parsedDate = rawDate ? new Date(rawDate) : null;
+      const publishedAt = parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : null;
+
+      return { title: String(title ?? "").trim(), link: link.trim(), publishedAt };
     })
     .filter((a) => a.title && a.link);
 }
@@ -142,7 +119,7 @@ async function tryFallbackFeedPaths(baseUrl: string): Promise<string | null> {
 // HTML selector heuristic: find the repeating "article card" pattern by
 // looking for headline-length anchors that share a common ancestor, then
 // picking whichever ancestor selector repeats the most (>= 3 times, since
-// we need a 3-article preview anyway).
+// we need at least a 3-article preview anyway).
 // ---------------------------------------------------------------------------
 
 const MIN_TITLE_LENGTH = 20;
@@ -197,15 +174,16 @@ export function proposeSelectors($: cheerio.CheerioAPI): Selectors | null {
   return { articleSelector: best.selector, titleSelector, linkSelector: titleSelector };
 }
 
-export function extractPreview(
+export function extractArticles(
   $: cheerio.CheerioAPI,
   selectors: Selectors,
   baseUrl: string,
-): PreviewArticle[] {
-  const preview: PreviewArticle[] = [];
+  limit = Infinity,
+): ArticleCandidate[] {
+  const articles: ArticleCandidate[] = [];
 
   $(selectors.articleSelector).each((_, el) => {
-    if (preview.length >= 3) return false;
+    if (articles.length >= limit) return false;
     const $el = $(el);
     const $link =
       selectors.linkSelector === "a" ? $el.find("a").first() : $el.find(selectors.linkSelector).first();
@@ -213,13 +191,14 @@ export function extractPreview(
     const href = $link.attr("href");
     if (!title || !href) return;
     try {
-      preview.push({ title, link: new URL(href, baseUrl).toString() });
+      // HTML selectors don't give us a reliable publish date.
+      articles.push({ title, link: new URL(href, baseUrl).toString(), publishedAt: null });
     } catch {
       // skip anchors with unparseable hrefs
     }
   });
 
-  return preview;
+  return articles;
 }
 
 /** Full auto-detection: try RSS first (autodiscovery, then common paths), fall back to HTML selectors. */
@@ -231,7 +210,7 @@ export async function detectSource(rawUrl: string): Promise<DetectionResult> {
   const text = await readCappedText(res);
 
   if (looksLikeFeed(res.headers.get("content-type"), text)) {
-    return { type: "rss", feedUrl: url, suggestedName: null, preview: parseFeedPreview(text) };
+    return { type: "rss", feedUrl: url, suggestedName: null, preview: parseFeedItems(text, 3) };
   }
 
   const $ = cheerio.load(text);
@@ -245,7 +224,7 @@ export async function detectSource(rawUrl: string): Promise<DetectionResult> {
       type: "rss",
       feedUrl,
       suggestedName,
-      preview: feedText ? parseFeedPreview(feedText) : [],
+      preview: feedText ? parseFeedItems(feedText, 3) : [],
     };
   }
 
@@ -254,7 +233,7 @@ export async function detectSource(rawUrl: string): Promise<DetectionResult> {
     type: "html",
     selectors,
     suggestedName,
-    preview: selectors ? extractPreview($, selectors, url) : [],
+    preview: selectors ? extractArticles($, selectors, url, 3) : [],
   };
 }
 
@@ -267,5 +246,5 @@ export async function previewUrlWithSelectors(
   const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error(`Fetching ${url} failed with status ${res.status}`);
   const text = await readCappedText(res);
-  return extractPreview(cheerio.load(text), selectors, url);
+  return extractArticles(cheerio.load(text), selectors, url, 3);
 }

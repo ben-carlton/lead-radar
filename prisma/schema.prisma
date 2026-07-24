@@ -31,6 +31,8 @@ model Organization {
   memberships Membership[]
   profiles    Profile[]
   sources     Source[]
+  articles    Article[]
+  runs        Run[]
 
   @@map("organizations")
 }
@@ -154,6 +156,7 @@ model Profile {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sources      Source[]
+  runs         Run[]
 
   @@index([organizationId])
   @@map("profiles")
@@ -203,9 +206,99 @@ model Source {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  articles     Article[]
 
   @@unique([organizationId, url])
   @@index([organizationId])
   @@index([profileId])
   @@map("sources")
+}
+
+enum ArticleStage {
+  FETCHED
+  KEYWORD_REJECTED
+  KEYWORD_PASSED
+  CLASSIFIED
+  LEAD_EXTRACTED
+}
+
+// One crawled article. Dedupe key is [organizationId, urlHash] (a hash of
+// the *normalized* URL — see src/lib/pipeline/fetch.ts), not urlHash alone,
+// per the multi-tenant rule: two orgs crawling the same public article must
+// not collide. CLASSIFIED/LEAD_EXTRACTED stages are unused until step 7;
+// step 6 only ever produces FETCHED -> KEYWORD_REJECTED|KEYWORD_PASSED.
+model Article {
+  id             String @id @default(cuid())
+  organizationId String
+  sourceId       String
+
+  url     String
+  urlHash String
+
+  title       String
+  publishedAt DateTime?
+  bodyText    String?
+
+  stage         ArticleStage @default(FETCHED)
+  keywordScore  Int          @default(0)
+  rejectReason  String?
+
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source       Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, urlHash])
+  @@index([organizationId])
+  @@index([sourceId])
+  @@map("articles")
+}
+
+enum RunMode {
+  BACKFILL
+  SCHEDULED
+}
+
+enum RunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// One pipeline invocation. Funnel counters (articlesFetched -> ...Filtered
+// -> ...Classified -> leadsCreated) make drop-off visible at every stage,
+// per BUILD_ORDER.md.txt step 6. tokensIn/tokensOut/estimatedCost stay 0
+// until step 7 adds LLM calls — present now so the schema doesn't need to
+// change under a running feature.
+model Run {
+  id             String @id @default(cuid())
+  organizationId String
+  profileId      String
+
+  mode   RunMode
+  status RunStatus @default(RUNNING)
+
+  lookbackDays Int?
+
+  articlesFetched    Int @default(0)
+  articlesFiltered   Int @default(0)
+  articlesClassified Int @default(0)
+  leadsCreated       Int @default(0)
+
+  tokensIn       Int @default(0)
+  tokensOut      Int @default(0)
+  estimatedCost  Float @default(0)
+
+  errors Json?
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([profileId])
+  @@map("runs")
 }

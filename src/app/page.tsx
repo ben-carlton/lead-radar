@@ -24,6 +24,9 @@ export default async function Home() {
         <Link href="/sources" className={buttonVariants({ variant: "outline" })}>
           Sources
         </Link>
+        <Link href="/runs" className={buttonVariants({ variant: "outline" })}>
+          Runs
+        </Link>
       </div>
       <form
         action={async () => {
