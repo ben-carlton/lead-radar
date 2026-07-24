@@ -30,6 +30,7 @@ model Organization {
   users       User[]
   memberships Membership[]
   profiles    Profile[]
+  sources     Source[]
 
   @@map("organizations")
 }
@@ -152,7 +153,59 @@ model Profile {
   updatedAt DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sources      Source[]
 
   @@index([organizationId])
   @@map("profiles")
+}
+
+enum SourceType {
+  RSS
+  HTML
+}
+
+enum SourceStatus {
+  ACTIVE
+  SUGGESTED
+  REJECTED
+}
+
+// A news source to crawl. type/feedUrl/selectors come from the add-by-URL
+// detection flow (src/lib/sources/detect.ts) — RSS when a feed is found,
+// HTML with a CSS-selector recipe otherwise. status SUGGESTED is unused
+// until the source-suggestion feature (BUILD_ORDER.md.txt step 12); every
+// source added manually here starts ACTIVE.
+model Source {
+  id             String @id @default(cuid())
+  organizationId String
+  profileId      String
+
+  name String
+  url  String
+
+  type    SourceType
+  feedUrl String?
+  // For HTML sources: { articleSelector, titleSelector, linkSelector }.
+  // Null for RSS sources.
+  selectors Json?
+
+  status          SourceStatus @default(ACTIVE)
+  suggestedReason String?
+
+  lastCrawledAt DateTime?
+  lastSuccessAt DateTime?
+  errorCount    Int       @default(0)
+  articlesFound Int       @default(0)
+  leadsFound    Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, url])
+  @@index([organizationId])
+  @@index([profileId])
+  @@map("sources")
 }

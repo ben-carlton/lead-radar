@@ -17,9 +17,14 @@ export default async function Home() {
           Signed in as {session?.user.email} &middot; {organization?.name}
         </p>
       </div>
-      <Link href="/profiles" className={buttonVariants()}>
-        Profiles
-      </Link>
+      <div className="flex gap-2">
+        <Link href="/profiles" className={buttonVariants()}>
+          Profiles
+        </Link>
+        <Link href="/sources" className={buttonVariants({ variant: "outline" })}>
+          Sources
+        </Link>
+      </div>
       <form
         action={async () => {
           "use server";

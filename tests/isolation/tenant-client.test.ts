@@ -153,4 +153,69 @@ describe("tenant-scoped client: isolation", () => {
     });
     expect(created.organizationId).toBe(orgA.organizationId);
   });
+
+  test("Source rows are isolated the same way", async () => {
+    const [profileA, profileB] = await Promise.all([
+      rawDb.profile.create({
+        data: { organizationId: orgA.organizationId, name: "A", productsSold: "x" },
+      }),
+      rawDb.profile.create({
+        data: { organizationId: orgB.organizationId, name: "B", productsSold: "y" },
+      }),
+    ]);
+
+    const [sourceA, sourceB] = await Promise.all([
+      rawDb.source.create({
+        data: {
+          organizationId: orgA.organizationId,
+          profileId: profileA.id,
+          name: "Org A source",
+          url: `https://a-${crypto.randomUUID().slice(0, 8)}.example.test`,
+          type: "RSS",
+          feedUrl: "https://a.example.test/feed",
+        },
+      }),
+      rawDb.source.create({
+        data: {
+          organizationId: orgB.organizationId,
+          profileId: profileB.id,
+          name: "Org B source",
+          url: `https://b-${crypto.randomUUID().slice(0, 8)}.example.test`,
+          type: "RSS",
+          feedUrl: "https://b.example.test/feed",
+        },
+      }),
+    ]);
+
+    const db = forOrganization(orgA.organizationId);
+
+    const sources = await db.source.findMany();
+    expect(sources.some((s) => s.id === sourceA.id)).toBe(true);
+    expect(sources.some((s) => s.id === sourceB.id)).toBe(false);
+
+    expect(await db.source.findUnique({ where: { id: sourceB.id } })).toBeNull();
+
+    await expect(
+      db.source.update({ where: { id: sourceB.id }, data: { name: "pwned" } }),
+    ).rejects.toThrow();
+
+    // profileId is a plain foreign key — scopeArgs() doesn't (and can't)
+    // rewrite it, so a Source spoofing another org's profileId would slip
+    // through the tenant client alone. The route layer is what actually
+    // rejects this (verified in source-routes.test.ts); this case just
+    // documents that the data layer permits it, so nobody "fixes" the app
+    // layer later by relying on this test.
+    const crossOrgProfile = await db.source.create({
+      data: {
+        organizationId: orgB.organizationId, // overridden to orgA, as usual
+        profileId: profileB.id, // NOT overridden — still points at org B
+        name: "Cross-profile source",
+        url: `https://c-${crypto.randomUUID().slice(0, 8)}.example.test`,
+        type: "RSS",
+        feedUrl: "https://c.example.test/feed",
+      },
+    });
+    expect(crossOrgProfile.organizationId).toBe(orgA.organizationId);
+    expect(crossOrgProfile.profileId).toBe(profileB.id);
+  });
 });

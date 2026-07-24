@@ -27,7 +27,7 @@ function createRawClient() {
 export const rawDb = globalForPrisma.rawDb ?? createRawClient();
 if (process.env.NODE_ENV !== "production") globalForPrisma.rawDb = rawDb;
 
-const MODELS_SCOPED_BY_ORG_ID = new Set(["User", "Membership", "Profile"]);
+const MODELS_SCOPED_BY_ORG_ID = new Set(["User", "Membership", "Profile", "Source"]);
 
 const READ_OR_WHERE_OPS = new Set([
   "findUnique",

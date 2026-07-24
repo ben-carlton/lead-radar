@@ -51,7 +51,17 @@
       "Bash(cat /tmp/schema_old.prisma 2>/dev/null | head -5; echo \"---\"; ls -la /tmp/schema_old.prisma 2>/dev/null)",
       "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-schema /tmp/schema_old.prisma --to-schema prisma/schema.prisma --script 2>&1 | Select-Object -Last 100 | Out-File -FilePath \"prisma\\\\migrations\\\\20260728090000_profiles\\\\migration.sql\" -Encoding utf8)",
       "Bash(mkdir -p \"/c/Users/benca/OneDrive/Documents/Claude Code/Lead Finder/src/app/api/profiles/[id]\")",
-      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx tsc --noEmit 2>&1 | Select-Object -Last 150)"
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx tsc --noEmit 2>&1 | Select-Object -Last 150)",
+      "Bash(curl -sS -m 8 -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://example.com)",
+      "Bash(curl -sS -m 10 -A \"Mozilla/5.0 \\(compatible; LeadRadarBot/0.1\\)\" -I https://www.australianmanufacturing.com.au/)",
+      "Bash(curl -sS -m 10 -A \"Mozilla/5.0 \\(compatible; LeadRadarBot/0.1; +mailto:test@example.com\\)\" https://www.australianmanufacturing.com.au/feed/)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx prisma migrate diff --from-schema prisma/_old_schema.prisma --to-schema prisma/schema.prisma --script 2>&1 | Select-Object -Last 150 | Out-File -FilePath \"prisma\\\\migrations\\\\20260803090000_sources\\\\migration.sql\" -Encoding utf8)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npm install cheerio fast-xml-parser 2>&1 | Select-Object -Last 30)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx vitest run tests/_smoke_detect.test.ts 2>&1 | Select-Object -Last 200)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx vitest run tests/_smoke_detect.test.ts --reporter=verbose 2>&1 | Select-Object -Last 300)",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx vitest run tests/_smoke_detect.test.ts --reporter=verbose 2>&1 | Select-Object -Last 60)",
+      "Bash(mkdir -p \"/c/Users/benca/OneDrive/Documents/Claude Code/Lead Finder/src/app/api/sources/detect\" \"/c/Users/benca/OneDrive/Documents/Claude Code/Lead Finder/src/app/api/sources/[id]\")",
+      "PowerShell($env:Path += ';C:\\\\Program Files\\\\nodejs'; cd \"C:\\\\Users\\\\benca\\\\OneDrive\\\\Documents\\\\Claude Code\\\\Lead Finder\"; npx --yes shadcn@latest add table badge select 2>&1 | Select-Object -Last 40)"
     ]
   }
 }
