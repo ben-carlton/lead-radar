@@ -111,7 +111,11 @@ export function AddSourceForm({ profiles }: { profiles: Profile[] }) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <Label htmlFor="profile">Profile</Label>
-        <Select value={profileId} onValueChange={(value) => setProfileId(value ?? "")}>
+        <Select
+          items={profiles.map((profile) => ({ value: profile.id, label: profile.name }))}
+          value={profileId}
+          onValueChange={(value) => setProfileId(value ?? "")}
+        >
           <SelectTrigger id="profile" className="w-full">
             <SelectValue placeholder="Choose a profile" />
           </SelectTrigger>
