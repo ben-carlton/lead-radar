@@ -27,7 +27,15 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {process.env.AUTH_DISABLED === "1" && (
+          <div className="bg-destructive text-destructive-foreground px-4 py-1.5 text-center text-xs font-medium">
+            AUTH_DISABLED=1 — sign-in is bypassed, every request uses one shared dev org. Never
+            deploy like this.
+          </div>
+        )}
+        {children}
+      </body>
     </html>
   );
 }

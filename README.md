@@ -35,6 +35,17 @@ See [PROJECT_BRIEF.md.txt](PROJECT_BRIEF.md.txt) for the product spec and
    npm run dev
    ```
 
+## Running without Google/Resend accounts
+
+Set `AUTH_DISABLED=1` in `.env` to skip sign-in entirely — every request
+acts as one shared, auto-created dev org, no credentials needed. A red
+banner shows on every page while it's on, and a warning logs on server
+start. This bypasses Auth.js itself (see `src/auth.ts`), not just the UI —
+`getTenantDb()` still gets a real (fake, but real-shaped) session, so
+tenant isolation code paths are otherwise unaffected. Unset it (or set it
+to anything other than `"1"`) to get real auth back. **Never set this in a
+real deployment** — anyone who can reach the app gets full access.
+
 ## Tenant isolation
 
 Three independent layers, per `PROJECT_BRIEF.md.txt`:

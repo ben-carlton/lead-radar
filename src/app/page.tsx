@@ -28,16 +28,18 @@ export default async function Home() {
           Runs
         </Link>
       </div>
-      <form
-        action={async () => {
-          "use server";
-          await signOut();
-        }}
-      >
-        <Button type="submit" variant="outline">
-          Sign out
-        </Button>
-      </form>
+      {process.env.AUTH_DISABLED !== "1" && (
+        <form
+          action={async () => {
+            "use server";
+            await signOut();
+          }}
+        >
+          <Button type="submit" variant="outline">
+            Sign out
+          </Button>
+        </form>
+      )}
     </div>
   );
 }
