@@ -54,15 +54,95 @@ function scoreSignalStrength(signalType: string): number {
   return SIGNAL_STRENGTH_RANKING.find((r) => r.pattern.test(signalType))?.subscore ?? DEFAULT_SIGNAL_STRENGTH;
 }
 
-// No real geocoding/adjacency data is available, so "adjacent partial" from
-// the brief is approximated as "location unknown" — benefit of the doubt
-// rather than a penalty, since it's genuinely ambiguous, not out of region.
+// Lightweight Australian state inference — not a geocoder, just enough to
+// tell "this is the same state as the profile's target regions" apart from
+// "this is a different state entirely." Word-boundary matched so short
+// abbreviations (sa, wa, nt, act) don't false-positive inside unrelated
+// words (e.g. "sa" inside "Tasmania").
+const AU_STATE_ALIASES: Record<string, string[]> = {
+  QLD: ["qld", "queensland"],
+  NSW: ["nsw", "new south wales"],
+  VIC: ["vic", "victoria"],
+  WA: ["wa", "western australia"],
+  SA: ["sa", "south australia"],
+  TAS: ["tas", "tasmania"],
+  ACT: ["act", "australian capital territory"],
+  NT: ["nt", "northern territory"],
+};
+
+// A handful of well-known city/suburb names, enough to infer a state from a
+// dateline that only names a locality (e.g. "Swanbank") without one of the
+// aliases above. Deliberately not exhaustive — this is a fallback tier, not
+// the primary match.
+const AU_LOCALITY_STATE_HINTS: Record<string, string> = {
+  brisbane: "QLD",
+  "gold coast": "QLD",
+  ipswich: "QLD",
+  swanbank: "QLD",
+  logan: "QLD",
+  "sunshine coast": "QLD",
+  toowoomba: "QLD",
+  townsville: "QLD",
+  cairns: "QLD",
+  rockhampton: "QLD",
+  mackay: "QLD",
+  bundaberg: "QLD",
+  sydney: "NSW",
+  newcastle: "NSW",
+  wollongong: "NSW",
+  grafton: "NSW",
+  melbourne: "VIC",
+  geelong: "VIC",
+  gippsland: "VIC",
+  perth: "WA",
+  fremantle: "WA",
+  adelaide: "SA",
+  hobart: "TAS",
+  darwin: "NT",
+  canberra: "ACT",
+};
+
+function wordBoundaryIncludes(haystack: string, needle: string): boolean {
+  return new RegExp(`\\b${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(haystack);
+}
+
+function inferAuState(text: string): string | null {
+  for (const [state, aliases] of Object.entries(AU_STATE_ALIASES)) {
+    if (aliases.some((alias) => wordBoundaryIncludes(text, alias))) return state;
+  }
+  for (const [locality, state] of Object.entries(AU_LOCALITY_STATE_HINTS)) {
+    if (wordBoundaryIncludes(text, locality)) return state;
+  }
+  return null;
+}
+
+// "Adjacent partial" from the brief, approximated two ways: an unknown
+// location gets the benefit of the doubt (genuinely ambiguous, not out of
+// region); a location in the same Australian state as the profile's target
+// regions gets strong-but-not-full credit even when it doesn't name one of
+// those regions exactly — a Rockhampton lead is still Queensland business
+// for a "Southeast QLD" profile, even though Rockhampton isn't Southeast.
+const SAME_STATE_SUBSCORE = 0.75;
+
 function scoreGeographicFit(regions: string[], suburb: string | null, state: string | null): number {
   if (regions.length === 0) return 1.0;
   if (!suburb && !state) return 0.5;
+
   const haystack = `${suburb ?? ""} ${state ?? ""}`.toLowerCase();
-  const matched = regions.some((region) => haystack.includes(region.trim().toLowerCase()));
-  return matched ? 1.0 : 0.0;
+
+  if (regions.some((region) => haystack.includes(region.trim().toLowerCase()))) {
+    return 1.0;
+  }
+
+  const leadState = inferAuState(haystack);
+  if (leadState) {
+    const profileStates = new Set(
+      regions.map((region) => inferAuState(region)).filter((s): s is string => s !== null),
+    );
+    if (profileStates.has(leadState)) return SAME_STATE_SUBSCORE;
+  }
+
+  return 0.0;
 }
 
 const INDUSTRY_NO_MATCH_SCORE = 0.3;

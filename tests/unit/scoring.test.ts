@@ -109,6 +109,70 @@ describe("scoreLead", () => {
     expect(breakdown.industryFit.subscore).toBe(1.0);
   });
 
+  test("a lead in the same AU state as the profile's regions gets strong partial credit, not zero", () => {
+    // Real case that motivated this: a Southeast QLD profile's regions are
+    // named suburbs (Brisbane Southside, Logan, Ipswich, Gold Coast), so a
+    // lead in Swanbank, QLD — a real place, just not one of those suburbs —
+    // previously scored 0 on geographic fit despite being squarely in the
+    // profile's home state.
+    const qldProfile = {
+      ...profile,
+      regions: ["Brisbane Southside", "Logan", "Ipswich", "Gold Coast", "Northern NSW to Grafton"],
+    };
+    const { breakdown } = scoreLead(
+      qldProfile,
+      {
+        signalType: "expansion",
+        companyText: "food processing expansion",
+        suburb: "Swanbank",
+        state: "QLD",
+        publishedAt: now,
+        contactName: null,
+        contactRole: null,
+      },
+      now,
+    );
+    expect(breakdown.geographicFit.subscore).toBe(0.75);
+    expect(breakdown.geographicFit.subscore).toBeGreaterThan(0);
+    expect(breakdown.geographicFit.subscore).toBeLessThan(1.0);
+  });
+
+  test("a lead in a different AU state than the profile's regions still scores zero", () => {
+    const qldProfile = { ...profile, regions: ["Brisbane Southside", "Logan", "Ipswich", "Gold Coast"] };
+    const { breakdown } = scoreLead(
+      qldProfile,
+      {
+        signalType: "expansion",
+        companyText: "food processing expansion",
+        suburb: "Gippsland",
+        state: "Victoria",
+        publishedAt: now,
+        contactName: null,
+        contactRole: null,
+      },
+      now,
+    );
+    expect(breakdown.geographicFit.subscore).toBe(0);
+  });
+
+  test("an exact named-region match still beats the same-state fallback", () => {
+    const qldProfile = { ...profile, regions: ["Ipswich"] };
+    const { breakdown } = scoreLead(
+      qldProfile,
+      {
+        signalType: "expansion",
+        companyText: "food processing expansion",
+        suburb: "Ipswich",
+        state: "QLD",
+        publishedAt: now,
+        contactName: null,
+        contactRole: null,
+      },
+      now,
+    );
+    expect(breakdown.geographicFit.subscore).toBe(1.0);
+  });
+
   test("score is always within 0-100 regardless of weight totals", () => {
     const skewedProfile = {
       ...profile,
