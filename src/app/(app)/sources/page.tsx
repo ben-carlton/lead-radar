@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTenantDb } from "@/lib/db";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SubmitButton } from "@/components/submit-button";
 import { resolveSuggestionAction, suggestSourcesAction } from "./actions";
 
 const selectClassName =
@@ -68,9 +69,9 @@ export default async function SourcesPage() {
                   </option>
                 ))}
               </select>
-              <Button type="submit" size="sm">
+              <SubmitButton size="sm" pendingText="Finding sources…">
                 Find similar sources
-              </Button>
+              </SubmitButton>
             </form>
           </CardContent>
         </Card>
@@ -105,16 +106,16 @@ export default async function SourcesPage() {
                     <form action={resolveSuggestionAction}>
                       <input type="hidden" name="sourceId" value={source.id} />
                       <input type="hidden" name="decision" value="accept" />
-                      <Button type="submit" size="sm">
+                      <SubmitButton size="sm" pendingText="Accepting…">
                         Accept
-                      </Button>
+                      </SubmitButton>
                     </form>
                     <form action={resolveSuggestionAction}>
                       <input type="hidden" name="sourceId" value={source.id} />
                       <input type="hidden" name="decision" value="reject" />
-                      <Button type="submit" variant="outline" size="sm">
+                      <SubmitButton variant="outline" size="sm" pendingText="Rejecting…">
                         Reject
-                      </Button>
+                      </SubmitButton>
                     </form>
                   </div>
                 </CardContent>

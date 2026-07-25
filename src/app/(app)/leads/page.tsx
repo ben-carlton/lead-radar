@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SubmitButton } from "@/components/submit-button";
 import { setLeadStatusAction } from "./actions";
 
 const selectClassName =
@@ -236,9 +237,13 @@ export default async function LeadsPage({
                         name="status"
                         value={lead.status === "NEW" ? "DISMISSED" : "NEW"}
                       />
-                      <Button type="submit" variant="outline" size="sm">
+                      <SubmitButton
+                        variant="outline"
+                        size="sm"
+                        pendingText={lead.status === "NEW" ? "Dismissing…" : "Restoring…"}
+                      >
                         {lead.status === "NEW" ? "Dismiss" : "Restore"}
-                      </Button>
+                      </SubmitButton>
                     </form>
                   </TableCell>
                 </TableRow>

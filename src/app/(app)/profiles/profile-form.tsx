@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SubmitButton } from "@/components/submit-button";
 
 type ProfileFormValues = {
   name: string;
@@ -103,9 +103,9 @@ export function ProfileForm({
         <Label htmlFor="isActive">Active</Label>
       </div>
 
-      <Button type="submit" className="w-fit">
+      <SubmitButton className="w-fit" pendingText="Saving…">
         {submitLabel}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

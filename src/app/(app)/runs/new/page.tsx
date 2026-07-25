@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { getTenantDb } from "@/lib/db";
 import { buttonVariants } from "@/components/ui/button";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/submit-button";
 import { LOOKBACK_DAYS_OPTIONS } from "@/lib/validators/run";
 import { startRunAction } from "../actions";
 
@@ -78,9 +78,9 @@ export default async function NewRunPage() {
               </select>
             </div>
 
-            <Button type="submit" className="w-fit">
+            <SubmitButton className="w-fit" pendingText="Starting run…">
               Start run
-            </Button>
+            </SubmitButton>
           </form>
         </CardContent>
       </Card>

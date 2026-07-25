@@ -1,8 +1,8 @@
 import { signIn } from "@/auth";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/submit-button";
 
 export default function SignInPage() {
   return (
@@ -24,9 +24,9 @@ export default function SignInPage() {
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" placeholder="you@company.com" required />
             </div>
-            <Button type="submit" className="w-full">
+            <SubmitButton className="w-full" pendingText="Sending…">
               Send magic link
-            </Button>
+            </SubmitButton>
           </form>
 
           <div className="flex items-center gap-2 text-muted-foreground text-xs">
@@ -41,9 +41,9 @@ export default function SignInPage() {
               await signIn("google");
             }}
           >
-            <Button type="submit" variant="outline" className="w-full">
+            <SubmitButton variant="outline" className="w-full" pendingText="Redirecting…">
               Continue with Google
-            </Button>
+            </SubmitButton>
           </form>
         </CardContent>
       </Card>

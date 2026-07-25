@@ -1,6 +1,6 @@
 import { auth, signOut } from "@/auth";
 import { rawDb } from "@/lib/db";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { AppSidebarNav } from "./_components/app-sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -32,9 +32,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 await signOut();
               }}
             >
-              <Button type="submit" variant="outline" size="sm" className="w-full">
+              <SubmitButton variant="outline" size="sm" className="w-full" pendingText="Signing out…">
                 Sign out
-              </Button>
+              </SubmitButton>
             </form>
           )}
         </div>

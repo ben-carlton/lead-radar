@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTenantDb } from "@/lib/db";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SubmitButton } from "@/components/submit-button";
 import { deleteProfileAction, updateProfileAction } from "../actions";
 import { ProfileForm } from "../profile-form";
 
@@ -44,9 +44,9 @@ export default async function EditProfilePage({ params }: Props) {
       </Card>
 
       <form action={boundDelete}>
-        <Button type="submit" variant="destructive">
+        <SubmitButton variant="destructive" pendingText="Deleting…">
           Delete profile
-        </Button>
+        </SubmitButton>
       </form>
     </div>
   );
