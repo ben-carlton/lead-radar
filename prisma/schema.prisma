@@ -316,16 +316,19 @@ enum AiStage {
   CLASSIFY
   EXTRACT
   ENRICH
+  SUGGEST_SOURCES
 }
 
 // One row per LLM call. PROJECT_BRIEF.md.txt: "Log tokens per stage to a
 // TokenUsage table. Show spend in the UI." estimatedCost is computed at
 // write time from the rates in src/lib/ai/budget.ts, not recomputed later —
 // so historical spend stays accurate even if pricing changes going forward.
+// runId is nullable because SUGGEST_SOURCES calls happen outside any Run —
+// triggered on-demand from the Sources page, not part of a pipeline run.
 model TokenUsage {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
-  runId          String
+  runId          String?
 
   stage     AiStage
   model     String
@@ -336,7 +339,7 @@ model TokenUsage {
   createdAt DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  run          Run          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  run          Run?         @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([runId])

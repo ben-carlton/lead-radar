@@ -23,15 +23,19 @@ export function hasBudgetRemaining(org: {
 
 /**
  * Logs one LLM call's spend to TokenUsage and rolls it up onto the parent
- * Run and Organization, per PROJECT_BRIEF.md.txt: "Log tokens per stage to
- * a TokenUsage table. Show spend in the UI." `db` must already be scoped to
- * `organizationId` (forOrganization() in a background job).
+ * Run (if any) and Organization, per PROJECT_BRIEF.md.txt: "Log tokens per
+ * stage to a TokenUsage table. Show spend in the UI." `db` must already be
+ * scoped to `organizationId` (forOrganization() in a background job).
+ *
+ * `runId` is optional — SUGGEST_SOURCES calls happen outside any Run
+ * (triggered on-demand from the Sources page), so there's nothing to roll
+ * up to beyond the Organization's monthly total.
  */
 export async function recordTokenUsage(
   db: PrismaClient,
   params: {
     organizationId: string;
-    runId: string;
+    runId?: string;
     stage: AiStage;
     model: string;
     tokensIn: number;
@@ -42,7 +46,7 @@ export async function recordTokenUsage(
 
   await db.tokenUsage.create({
     data: {
-      runId: params.runId,
+      runId: params.runId ?? null,
       stage: params.stage,
       model: params.model,
       tokensIn: params.tokensIn,
@@ -54,14 +58,16 @@ export async function recordTokenUsage(
     } as any,
   });
 
-  await db.run.update({
-    where: { id: params.runId },
-    data: {
-      tokensIn: { increment: params.tokensIn },
-      tokensOut: { increment: params.tokensOut },
-      estimatedCost: { increment: cost },
-    },
-  });
+  if (params.runId) {
+    await db.run.update({
+      where: { id: params.runId },
+      data: {
+        tokensIn: { increment: params.tokensIn },
+        tokensOut: { increment: params.tokensOut },
+        estimatedCost: { increment: cost },
+      },
+    });
+  }
 
   await db.organization.update({
     where: { id: params.organizationId },
