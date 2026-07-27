@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/format-date";
 
 const statusVariant = {
   RUNNING: "secondary",
@@ -61,7 +62,7 @@ export default async function RunsPage() {
                     <Badge variant={statusVariant[run.status]}>{run.status}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {run.startedAt.toLocaleString()}
+                    {formatDateTime(run.startedAt)}
                   </TableCell>
                   <TableCell className="text-right">{run.articlesFetched}</TableCell>
                   <TableCell className="text-right">{run.articlesFiltered}</TableCell>

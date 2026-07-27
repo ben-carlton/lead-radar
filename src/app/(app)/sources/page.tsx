@@ -12,14 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SubmitButton } from "@/components/submit-button";
+import { formatDateTime } from "@/lib/format-date";
 import { resolveSuggestionAction, suggestSourcesAction } from "./actions";
 
 const selectClassName =
   "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
-
-function formatDate(date: Date | null) {
-  return date ? date.toLocaleString() : "—";
-}
 
 const statusVariant = {
   ACTIVE: "default",
@@ -167,10 +164,10 @@ export default async function SourcesPage() {
                       <Badge variant={statusVariant[source.status]}>{source.status}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(source.lastCrawledAt)}
+                      {formatDateTime(source.lastCrawledAt)}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(source.lastSuccessAt)}
+                      {formatDateTime(source.lastSuccessAt)}
                     </TableCell>
                     <TableCell className="text-right">{source.errorCount}</TableCell>
                     <TableCell className="text-right">{source.articlesFound}</TableCell>

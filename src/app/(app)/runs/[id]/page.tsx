@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/format-date";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -84,7 +85,7 @@ export default async function RunDetailPage({ params }: Props) {
         <div>
           <h1 className="text-2xl font-semibold">{run.profile.name}</h1>
           <p className="text-muted-foreground text-sm">
-            {run.mode} run &middot; started {run.startedAt.toLocaleString()}
+            {run.mode} run &middot; started {formatDateTime(run.startedAt)}
           </p>
         </div>
         <div className="flex items-center gap-2">

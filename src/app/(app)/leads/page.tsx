@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SubmitButton } from "@/components/submit-button";
+import { formatDate } from "@/lib/format-date";
 import { setLeadStatusAction } from "./actions";
 
 const selectClassName =
@@ -227,7 +228,7 @@ export default async function LeadsPage({
                     <Badge variant={statusVariant[lead.status]}>{lead.status}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {lead.createdAt.toLocaleDateString()}
+                    {formatDate(lead.createdAt)}
                   </TableCell>
                   <TableCell>
                     <form action={setLeadStatusAction}>

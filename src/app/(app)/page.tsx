@@ -3,6 +3,7 @@ import { getTenantDb } from "@/lib/db";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/format-date";
 
 const runStatusVariant = {
   RUNNING: "secondary",
@@ -60,7 +61,7 @@ export default async function DashboardPage() {
               <div>
                 <p className="font-medium">{lastRun.profile.name}</p>
                 <p className="text-muted-foreground text-sm">
-                  {lastRun.mode} &middot; started {lastRun.startedAt.toLocaleString()}
+                  {lastRun.mode} &middot; started {formatDateTime(lastRun.startedAt)}
                 </p>
               </div>
               <div className="flex items-center gap-3">
